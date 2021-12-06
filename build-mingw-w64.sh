@@ -48,18 +48,13 @@ if [ -z "$CHECKOUT_ONLY" ]; then
 fi
 
 if [ ! -d mingw-w64 ]; then
-    git \
-        -c advice.detachedHead=false \
-        clone \
-            --depth 1 \
-            https://github.com/mingw-w64/mingw-w64 \
-                --branch $MINGW_W64_VERSION
+    git clone https://github.com/mingw-w64/mingw-w64
     CHECKOUT=1
 fi
 
 cd mingw-w64
 
-if [ -n "$SYNC" ]; then
+if [ -n "$SYNC" ] || [ -n "$CHECKOUT" ]; then
     [ -z "$SYNC" ] || git fetch
     git checkout $MINGW_W64_VERSION
 fi
