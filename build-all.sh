@@ -30,7 +30,9 @@ for dep in git curl cmake; do
 done
 
 ./build-llvm.sh $PREFIX
+./build-llvm.sh $PREFIX --stage2 --lto --full-llvm --with-python
 ./build-lldb-mi.sh $PREFIX
+./strip-llvm.sh $PREFIX
 ./install-wrappers.sh $PREFIX
 ./build-mingw-w64.sh $PREFIX
 ./build-mingw-w64-tools.sh $PREFIX
@@ -38,5 +40,4 @@ done
 ./build-mingw-w64-libraries.sh $PREFIX
 ./build-libcxx.sh $PREFIX
 ./build-compiler-rt.sh $PREFIX --build-sanitizers
-./build-libssp.sh $PREFIX
 ./build-openmp.sh $PREFIX
