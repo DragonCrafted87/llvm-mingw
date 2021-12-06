@@ -53,15 +53,15 @@ cd llvm-project
 
 LLVM_PATH="$(pwd)/llvm"
 
+: ${CORES:=$(nproc 2>/dev/null)}
+: ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
+: ${CORES:=4}
+
 if [ -n "$(which ninja)" ]; then
     CMAKE_GENERATOR="Ninja"
     NINJA=1
     BUILDCMD=ninja
 else
-    : ${CORES:=$(nproc 2>/dev/null)}
-    : ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
-    : ${CORES:=4}
-
     case $(uname) in
     MINGW*)
         CMAKE_GENERATOR="MSYS Makefiles"
@@ -105,8 +105,8 @@ build_all() {
             -DLIBUNWIND_ENABLE_SHARED=$SHARED \
             -DLIBUNWIND_ENABLE_STATIC=$STATIC \
             ..
-        $BUILDCMD ${CORES+-j$CORES}
-        $BUILDCMD install
+        cmake --build . --parallel $CORES
+        cmake --install .
         cd ..
     done
     cd ..
@@ -145,7 +145,7 @@ build_all() {
             -DLIBCXX_INCLUDE_TESTS=FALSE \
             -DLIBCXX_ENABLE_ABI_LINKER_SCRIPT=FALSE \
             ..
-        $BUILDCMD ${CORES+-j$CORES} generate-cxx-headers
+        cmake --build . --parallel $CORES --target generate-cxx-headers
         cd ..
     done
     cd ..
@@ -176,7 +176,7 @@ build_all() {
             -DLIBCXX_ENABLE_SHARED=$SHARED \
             -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=TRUE \
             ..
-        $BUILDCMD ${CORES+-j$CORES}
+        cmake --build . --parallel $CORES
         cd ..
     done
     cd ..
@@ -184,8 +184,8 @@ build_all() {
     cd libcxx
     for arch in $ARCHS; do
         cd build-$arch-$type
-        $BUILDCMD ${CORES+-j$CORES}
-        $BUILDCMD install
+        cmake --build . --parallel $CORES
+        cmake --install .
         cd ..
     done
     cd ..

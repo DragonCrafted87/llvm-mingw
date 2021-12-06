@@ -35,15 +35,14 @@ fi
 
 cd llvm-project/openmp
 
+: ${CORES:=$(nproc 2>/dev/null)}
+: ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
+: ${CORES:=4}
+
 if [ -n "$(which ninja)" ]; then
     CMAKE_GENERATOR="Ninja"
     NINJA=1
-    BUILDCMD=ninja
 else
-    : ${CORES:=$(nproc 2>/dev/null)}
-    : ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
-    : ${CORES:=4}
-
     case $(uname) in
     MINGW*)
         CMAKE_GENERATOR="MSYS Makefiles"
@@ -51,7 +50,6 @@ else
     *)
         ;;
     esac
-    BUILDCMD=make
 fi
 
 for arch in $ARCHS; do
@@ -87,8 +85,8 @@ for arch in $ARCHS; do
         -DLIBOMP_ENABLE_SHARED=TRUE \
         $CMAKEFLAGS \
         ..
-    $BUILDCMD ${CORES+-j$CORES}
-    $BUILDCMD install
+    cmake --build . --parallel $CORES
+    cmake --install .
     rm -f $PREFIX/$arch-w64-mingw32/bin/*iomp5md*
     rm -f $PREFIX/$arch-w64-mingw32/lib/*iomp5md*
     cd ..

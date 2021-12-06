@@ -54,7 +54,6 @@ fi
 if [ -n "$(which ninja)" ]; then
     CMAKE_GENERATOR="Ninja"
     NINJA=1
-    BUILDCMD=ninja
 else
     : ${CORES:=$(nproc 2>/dev/null)}
     : ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
@@ -67,7 +66,6 @@ else
     *)
         ;;
     esac
-    BUILDCMD=make
 fi
 
 export LLVM_DIR="$PREFIX"
@@ -115,4 +113,4 @@ cmake \
     $CMAKEFLAGS \
     ..
 
-$BUILDCMD ${CORES+-j$CORES} install/strip
+cmake --build . --parallel $CORES --target install/strip

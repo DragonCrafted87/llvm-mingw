@@ -75,20 +75,20 @@ if [ -z "$CHECKOUT_ONLY" ]; then
 fi
 
 if [ ! -d llvm-project ]; then
-    mkdir llvm-project
-    cd llvm-project
-    git init
-    git remote add origin https://github.com/llvm/llvm-project.git
-    git fetch --depth 1 origin "$LLVM_VERSION"
-    git checkout FETCH_HEAD
-    cd ..
+
+    git \
+        -c advice.detachedHead=false \
+        clone \
+            --depth 1 \
+            https://github.com/llvm/llvm-project.git \
+                --branch "$LLVM_VERSION"
     CHECKOUT=1
     unset SYNC
 fi
 
-if [ -n "$SYNC" ] || [ -n "$CHECKOUT" ]; then
+if [ -n "$SYNC" ]; then
     cd llvm-project
-    if [ -n "$SYNC" ]; then 
+    if [ -n "$SYNC" ]; then
         git fetch --depth 1 origin "$LLVM_VERSION"
         git checkout FETCH_HEAD
     fi
@@ -97,15 +97,14 @@ fi
 
 [ -z "$CHECKOUT_ONLY" ] || exit 0
 
+: ${CORES:=$(nproc 2>/dev/null)}
+: ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
+: ${CORES:=4}
+
 if [ -n "$(which ninja)" ]; then
     CMAKE_GENERATOR="Ninja"
     NINJA=1
-    BUILDCMD=ninja
 else
-    : ${CORES:=$(nproc 2>/dev/null)}
-    : ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
-    : ${CORES:=4}
-
     case $(uname) in
     MINGW*)
         CMAKE_GENERATOR="MSYS Makefiles"
@@ -113,7 +112,6 @@ else
     *)
         ;;
     esac
-    BUILDCMD=make
 fi
 
 if [ -n "$HOST" ]; then
@@ -244,6 +242,6 @@ cmake \
     $CMAKEFLAGS \
     ..
 
-$BUILDCMD ${CORES+-j$CORES} install/strip
+cmake --build . --parallel $CORES --target install/strip
 
 cp ../LICENSE.TXT $PREFIX
