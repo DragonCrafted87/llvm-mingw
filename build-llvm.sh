@@ -195,32 +195,13 @@ fi
 TOOLCHAIN_ONLY=ON
 if [ -n "$FULL_LLVM" ]; then
     TOOLCHAIN_ONLY=OFF
+    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_PROJECTS=\"clang;lld;lldb\""
+    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_RUNTIMES=\"all\""
+    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_LIBCXX=ON"
+    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_LLD=ON"
 fi
 
 cd llvm-project/llvm
-
-case $(uname) in
-MINGW*)
-    EXPLICIT_PROJECTS=1
-    ;;
-*)
-    # If we have working symlinks, hook up other tools by symlinking them
-    # into tools, instead of using LLVM_ENABLE_PROJECTS. This way, all
-    # source code is under the directory tree of the toplevel cmake file
-    # (llvm-project/llvm), which makes cmake use relative paths to all source
-    # files. Using relative paths makes for identical compiler output from
-    # different source trees in different locations (for cases where e.g.
-    # path names are included, in assert messages), allowing ccache to speed
-    # up compilation.
-    cd tools
-    for p in clang lld lldb; do
-        if [ ! -e $p ]; then
-            ln -s ../../$p .
-        fi
-    done
-    cd ..
-    ;;
-esac
 
 [ -z "$CLEAN" ] || rm -rf $BUILDDIR
 mkdir -p $BUILDDIR
@@ -232,11 +213,10 @@ cmake \
     -DCMAKE_INSTALL_PREFIX="$PREFIX" \
     -DCMAKE_BUILD_TYPE=Release \
     -DLLVM_ENABLE_ASSERTIONS=$ASSERTS \
-    ${EXPLICIT_PROJECTS+-DLLVM_ENABLE_PROJECTS="clang;lld;lldb"} \
     -DLLVM_TARGETS_TO_BUILD="ARM;AArch64;X86" \
     -DLLVM_INSTALL_TOOLCHAIN_ONLY=$TOOLCHAIN_ONLY \
     -DLLVM_LINK_LLVM_DYLIB=$LINK_DYLIB \
-    -DLLVM_TOOLCHAIN_TOOLS="llvm-ar;llvm-ranlib;llvm-objdump;llvm-rc;llvm-cvtres;llvm-nm;llvm-strings;llvm-readobj;llvm-dlltool;llvm-pdbutil;llvm-objcopy;llvm-strip;llvm-cov;llvm-profdata;llvm-addr2line;llvm-symbolizer;llvm-windres;llvm-ml;llvm-readelf" \
+    -DLLVM_TOOLCHAIN_TOOLS="all" \
     ${HOST+-DLLVM_HOST_TRIPLE=$HOST} \
     -DLLDB_INCLUDE_TESTS=OFF \
     $CMAKEFLAGS \
