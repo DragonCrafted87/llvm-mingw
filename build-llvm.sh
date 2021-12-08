@@ -101,7 +101,7 @@ fi
 : ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
 : ${CORES:=4}
 
-if [ -n "$(which ninja)" ]; then
+if [ -n "$(command -v ninja)" ]; then
     CMAKE_GENERATOR="Ninja"
     NINJA=1
 else
@@ -122,8 +122,8 @@ if [ -n "$HOST" ]; then
             echo $(pwd)/llvm-project/llvm/build-asserts/bin
         elif [ -d llvm-project/llvm/build-noasserts/bin ]; then
             echo $(pwd)/llvm-project/llvm/build-noasserts/bin
-        elif [ -n "$(which llvm-tblgen)" ]; then
-            echo $(dirname $(which llvm-tblgen))
+        elif [ -n "$(command -v llvm-tblgen)" ]; then
+            echo $(dirname $(command -v llvm-tblgen))
         fi
     }
 
@@ -145,7 +145,7 @@ if [ -n "$HOST" ]; then
         CMAKEFLAGS="$CMAKEFLAGS -DLLDB_TABLEGEN=$native/lldb-tblgen$suffix"
         CMAKEFLAGS="$CMAKEFLAGS -DLLVM_CONFIG_PATH=$native/llvm-config$suffix"
     fi
-    CROSS_ROOT=$(cd $(dirname $(which $HOST-gcc))/../$HOST && pwd)
+    CROSS_ROOT=$(cd $(dirname $(command -v $HOST-gcc))/../$HOST && pwd)
     CMAKEFLAGS="$CMAKEFLAGS -DCMAKE_FIND_ROOT_PATH=$CROSS_ROOT"
     CMAKEFLAGS="$CMAKEFLAGS -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER"
     CMAKEFLAGS="$CMAKEFLAGS -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY"
@@ -195,23 +195,21 @@ fi
 TOOLCHAIN_ONLY=ON
 if [ -n "$FULL_LLVM" ]; then
     TOOLCHAIN_ONLY=OFF
-    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_PROJECTS=\"clang;lld;lldb\""
-    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_RUNTIMES=\"all\""
-    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_LIBCXX=ON"
-    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_LLD=ON"
+    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;lld;lldb;llvm"
 fi
 
 cd llvm-project/llvm
 
-[ -z "$CLEAN" ] || rm -rf $BUILDDIR
 mkdir -p $BUILDDIR
 cd $BUILDDIR
+rm -rf *
 # Building LLDB for macOS fails unless building libc++ is enabled at the
 # same time, or unless the LLDB tests are disabled.
 cmake \
     ${CMAKE_GENERATOR+-G} "$CMAKE_GENERATOR" \
     -DCMAKE_INSTALL_PREFIX="$PREFIX" \
     -DCMAKE_BUILD_TYPE=Release \
+    -DLLVM_PARALLEL_LINK_JOBS=1 \
     -DLLVM_ENABLE_ASSERTIONS=$ASSERTS \
     -DLLVM_TARGETS_TO_BUILD="ARM;AArch64;X86" \
     -DLLVM_INSTALL_TOOLCHAIN_ONLY=$TOOLCHAIN_ONLY \

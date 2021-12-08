@@ -112,11 +112,9 @@ if [ -n "$EXEEXT" ]; then
     # Remove superfluous frontends; these aren't really used.
     rm -f clang-cpp* clang++*
 fi
-cd ..
+cd "$PREFIX"
 rm -rf share libexec
-cd include
-rm -rf clang clang-c lld llvm llvm-c lldb
-cd ..
+cd "$PREFIX"
 cd lib
 rm -f *.dll.a
 for i in lib*.a *.so* *.dylib* cmake; do

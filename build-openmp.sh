@@ -39,7 +39,7 @@ cd llvm-project/openmp
 : ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
 : ${CORES:=4}
 
-if [ -n "$(which ninja)" ]; then
+if [ -n "$(command -v ninja)" ]; then
     CMAKE_GENERATOR="Ninja"
     NINJA=1
 else

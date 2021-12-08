@@ -51,7 +51,7 @@ if [ -n "$SYNC" ] || [ -n "$CHECKOUT" ]; then
     cd ..
 fi
 
-if [ -n "$(which ninja)" ]; then
+if [ -n "$(command -v ninja)" ]; then
     CMAKE_GENERATOR="Ninja"
     NINJA=1
 else

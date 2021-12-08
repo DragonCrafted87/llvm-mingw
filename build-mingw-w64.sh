@@ -62,7 +62,7 @@ fi
 [ -z "$CHECKOUT_ONLY" ] || exit 0
 
 MAKE=make
-if [ -n "$(which gmake)" ]; then
+if [ -n "$(command -v gmake)" ]; then
     MAKE=gmake
 fi
 

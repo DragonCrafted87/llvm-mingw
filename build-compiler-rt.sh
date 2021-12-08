@@ -51,7 +51,7 @@ fi
 : ${CORES:=$(sysctl -n hw.ncpu 2>/dev/null)}
 : ${CORES:=4}
 
-if [ -n "$(which ninja)" ]; then
+if [ -n "$(command -v ninja)" ]; then
     CMAKE_GENERATOR="Ninja"
     NINJA=1
 else
@@ -78,9 +78,9 @@ for arch in $ARCHS; do
         esac
     fi
 
-    [ -z "$CLEAN" ] || rm -rf build-$arch$BUILD_SUFFIX
     mkdir -p build-$arch$BUILD_SUFFIX
     cd build-$arch$BUILD_SUFFIX
+    rm -rf *
     cmake \
         ${CMAKE_GENERATOR+-G} "$CMAKE_GENERATOR" \
         -DCMAKE_BUILD_TYPE=Release \
