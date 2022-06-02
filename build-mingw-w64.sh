@@ -18,7 +18,7 @@ set -e
 
 : ${DEFAULT_WIN32_WINNT:=0x601}
 : ${DEFAULT_MSVCRT:=ucrt}
-: ${MINGW_W64_VERSION:=a3f6d363d534e9d5563a0b7c677889101e6bbd42}
+: ${MINGW_W64_VERSION:="10.0.0"}
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -48,7 +48,12 @@ if [ -z "$CHECKOUT_ONLY" ]; then
 fi
 
 if [ ! -d mingw-w64 ]; then
-    git clone https://github.com/mingw-w64/mingw-w64
+    git \
+        -c advice.detachedHead=false \
+        clone \
+            --depth 1 \
+            https://github.com/mingw-w64/mingw-w64 \
+                --branch v"$MINGW_W64_VERSION"
     CHECKOUT=1
 fi
 
@@ -56,7 +61,7 @@ cd mingw-w64
 
 if [ -n "$SYNC" ] || [ -n "$CHECKOUT" ]; then
     [ -z "$SYNC" ] || git fetch
-    git checkout $MINGW_W64_VERSION
+    git checkout v"$MINGW_W64_VERSION"
 fi
 
 [ -z "$CHECKOUT_ONLY" ] || exit 0
