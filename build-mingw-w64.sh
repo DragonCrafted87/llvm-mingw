@@ -18,7 +18,7 @@ set -e
 
 : ${DEFAULT_WIN32_WINNT:=0x601}
 : ${DEFAULT_MSVCRT:=ucrt}
-: ${MINGW_W64_VERSION:=586baa17bb41dd78addd8cbb6415cfd24d24e925}
+: ${MINGW_W64_VERSION:=a3f6d363d534e9d5563a0b7c677889101e6bbd42}
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -124,3 +124,10 @@ for arch in $ARCHS; do
     cd ..
 done
 cd ..
+
+for arch in $ARCHS; do
+    mkdir -p "$PREFIX/$arch-w64-mingw32/share/mingw32"
+    for file in COPYING COPYING.MinGW-w64/COPYING.MinGW-w64.txt COPYING.MinGW-w64-runtime/COPYING.MinGW-w64-runtime.txt; do
+        install -m644 "$file" "$PREFIX/$arch-w64-mingw32/share/mingw32"
+    done
+done

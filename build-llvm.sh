@@ -16,12 +16,14 @@
 
 set -e
 
-: ${LLVM_VERSION:=llvmorg-13.0.0}
+: ${LLVM_VERSION:=llvmorg-14.0.0}
 ASSERTS=OFF
 unset HOST
 BUILDDIR="build"
 LINK_DYLIB=ON
 ASSERTSSUFFIX=""
+LLDB=ON
+CLANG_TOOLS_EXTRA=ON
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -57,6 +59,15 @@ while [ $# -gt 0 ]; do
     --with-python)
         WITH_PYTHON=1
         ;;
+    --symlink-projects)
+        SYMLINK_PROJECTS=1
+        ;;
+    --disable-lldb)
+        unset LLDB
+        ;;
+    --disable-clang-tools-extra)
+        unset CLANG_TOOLS_EXTRA
+        ;;
     *)
         PREFIX="$1"
         ;;
@@ -66,7 +77,7 @@ done
 BUILDDIR="$BUILDDIR$ASSERTSSUFFIX"
 if [ -z "$CHECKOUT_ONLY" ]; then
     if [ -z "$PREFIX" ]; then
-        echo $0 [--enable-asserts] [--stage2] [--thinlto] [--lto] [--disable-dylib] [--full-llvm] [--with-python] [--host=triple] dest
+        echo $0 [--enable-asserts] [--stage2] [--thinlto] [--lto] [--disable-dylib] [--full-llvm] [--with-python] [--symlink-projects] [--disable-lldb] [--disable-clang-tools-extra] [--host=triple] dest
         exit 1
     fi
 
@@ -83,14 +94,33 @@ if [ ! -d llvm-project ]; then
             https://github.com/llvm/llvm-project.git \
                 --branch "$LLVM_VERSION"
     CHECKOUT=1
-    unset SYNC
 fi
 
 if [ -n "$SYNC" ]; then
     cd llvm-project
-    if [ -n "$SYNC" ]; then
-        git fetch --depth 1 origin "$LLVM_VERSION"
-        git checkout FETCH_HEAD
+    # Check if the intended commit or tag exists in the local repo. If it
+    # exists, just check it out instead of trying to fetch it.
+    # (Redoing a shallow fetch will refetch the data even if the commit
+    # already exists locally, unless fetching a tag with the "tag"
+    # argument.)
+    if git cat-file -e "$LLVM_VERSION" 2> /dev/null; then
+        # Exists; just check it out
+        git checkout "$LLVM_VERSION"
+    else
+        case "$LLVM_VERSION" in
+        llvmorg-*)
+            # If $LLVM_VERSION looks like a tag, fetch it with the
+            # "tag" keyword. This makes sure that the local repo
+            # gets the tag too, not only the commit itself. This allows
+            # later fetches to realize that the tag already exists locally.
+            git fetch --depth 1 origin tag "$LLVM_VERSION"
+            git checkout "$LLVM_VERSION"
+            ;;
+        *)
+            git fetch --depth 1 origin "$LLVM_VERSION"
+            git checkout FETCH_HEAD
+            ;;
+        esac
     fi
     cd ..
 fi
@@ -182,14 +212,16 @@ elif [ -n "$STAGE2" ]; then
     export PATH="$PREFIX/bin:$PATH"
     CMAKEFLAGS="$CMAKEFLAGS -DCMAKE_C_COMPILER=clang"
     CMAKEFLAGS="$CMAKEFLAGS -DCMAKE_CXX_COMPILER=clang++"
-    if [ "$(uname)" != "Darwin" ]; then
-        # Current lld isn't yet properly usable on macOS
-        CMAKEFLAGS="$CMAKEFLAGS -DLLVM_USE_LINKER=lld"
-    fi
+    CMAKEFLAGS="$CMAKEFLAGS -DLLVM_USE_LINKER=lld"
 fi
 
 if [ -n "$LTO" ]; then
     CMAKEFLAGS="$CMAKEFLAGS -DLLVM_ENABLE_LTO=$LTO"
+fi
+
+if [ -n "$MACOS_REDIST" ]; then
+    CMAKEFLAGS="$CMAKEFLAGS -DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+    CMAKEFLAGS="$CMAKEFLAGS -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9"
 fi
 
 TOOLCHAIN_ONLY=ON
@@ -200,6 +232,44 @@ fi
 
 cd llvm-project/llvm
 
+if [ -n "$SYMLINK_PROJECTS" ]; then
+    # If requested, hook up other tools by symlinking them into tools,
+    # instead of using LLVM_ENABLE_PROJECTS. This way, all source code is
+    # under the directory tree of the toplevel cmake file (llvm-project/llvm),
+    # which makes cmake use relative paths to all source files. Using relative
+    # paths makes for identical compiler output from different source trees in
+    # different locations (for cases where e.g. path names are included, in
+    # assert messages), allowing ccache to share caches across multiple
+    # checkouts.
+    cd tools
+    for p in clang lld lldb; do
+        if [ "$p" = "lldb" ] && [ -z "$LLDB" ]; then
+            continue
+        fi
+        if [ ! -e $p ]; then
+            ln -s ../../$p .
+        fi
+    done
+    cd ..
+    if [ -n "$CLANG_TOOLS_EXTRA" ]; then
+        cd ../clang/tools
+        if [ ! -e extra ]; then
+            ln -s ../../clang-tools-extra extra
+        fi
+        cd ../../llvm
+    fi
+else
+    EXPLICIT_PROJECTS=1
+    PROJECTS="clang;lld"
+    if [ -n "$LLDB" ]; then
+        PROJECTS="$PROJECTS;lldb"
+    fi
+    if [ -n "$CLANG_TOOLS_EXTRA" ]; then
+        PROJECTS="$PROJECTS;clang-tools-extra"
+    fi
+fi
+
+[ -z "$CLEAN" ] || rm -rf $BUILDDIR
 mkdir -p $BUILDDIR
 cd $BUILDDIR
 rm -rf *

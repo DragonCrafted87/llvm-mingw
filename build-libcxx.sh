@@ -74,15 +74,16 @@ fi
 
 build_all() {
     type="$1"
+    CMAKEFLAGS=""
     if [ "$type" = "shared" ]; then
         SHARED=TRUE
         STATIC=FALSE
+        CMAKEFLAGS="$CMAKEFLAGS -DLIBCXXABI_USE_LLVM_UNWINDER=ON"
     else
         SHARED=FALSE
         STATIC=TRUE
     fi
 
-    cd libunwind
     for arch in $ARCHS; do
         [ -z "$CLEAN" ] || rm -rf build-$arch-$type
         mkdir -p build-$arch-$type
@@ -101,6 +102,7 @@ build_all() {
             -DLLVM_PATH="$LLVM_PATH" \
             -DCMAKE_AR="$PREFIX/bin/llvm-ar" \
             -DCMAKE_RANLIB="$PREFIX/bin/llvm-ranlib" \
+            -DLLVM_ENABLE_RUNTIMES="libunwind;libcxxabi;libcxx" \
             -DLIBUNWIND_USE_COMPILER_RT=TRUE \
             -DLIBUNWIND_ENABLE_SHARED=$SHARED \
             -DLIBUNWIND_ENABLE_STATIC=$STATIC \
@@ -133,14 +135,11 @@ build_all() {
             -DCMAKE_RANLIB="$PREFIX/bin/llvm-ranlib" \
             -DLLVM_PATH="$LLVM_PATH" \
             -DLIBCXX_USE_COMPILER_RT=ON \
-            -DLIBCXX_HAS_WIN32_THREAD_API=ON \
             -DLIBCXX_ENABLE_SHARED=$SHARED \
             -DLIBCXX_ENABLE_STATIC=$STATIC \
             -DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY=OFF \
             -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=TRUE \
             -DLIBCXX_CXX_ABI=libcxxabi \
-            -DLIBCXX_CXX_ABI_INCLUDE_PATHS=../../libcxxabi/include \
-            -DLIBCXX_CXX_ABI_LIBRARY_PATH=../../libcxxabi/build-$arch-$type/lib \
             -DLIBCXX_LIBDIR_SUFFIX="" \
             -DLIBCXX_INCLUDE_TESTS=FALSE \
             -DLIBCXX_ENABLE_ABI_LINKER_SCRIPT=FALSE \
@@ -171,10 +170,8 @@ build_all() {
             -DCMAKE_RANLIB="$PREFIX/bin/llvm-ranlib" \
             -DLIBCXXABI_USE_COMPILER_RT=ON \
             -DLIBCXXABI_ENABLE_SHARED=OFF \
-            -DLIBCXXABI_LIBCXX_INCLUDES=../../libcxx/build-$arch-$type/include/c++/v1 \
             -DLIBCXXABI_LIBDIR_SUFFIX="" \
-            -DLIBCXX_ENABLE_SHARED=$SHARED \
-            -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=TRUE \
+            $CMAKEFLAGS \
             ..
         cmake --build . --parallel $CORES
         cd ..
@@ -188,20 +185,9 @@ build_all() {
         cmake --install .
         cd ..
     done
-    cd ..
 }
 
 # Build shared first and static afterwards; the headers for static linking also
 # work when linking against the DLL, but not vice versa.
 [ -z "$BUILD_SHARED" ] || build_all shared
 [ -z "$BUILD_STATIC" ] || build_all static
-
-# Remove dummy placeholder libunwind.a. If we've built a static version, it
-# already was overwritten with a proper one, but if only building a shared
-# version, remove the dummy one to avoid surprises.
-for arch in $ARCHS; do
-    # Only remove the file if it contains no members.
-    if [ -f $PREFIX/$arch-w64-mingw32/lib/libunwind.a ] && [ "$(llvm-ar t $PREFIX/$arch-w64-mingw32/lib/libunwind.a)" = "" ]; then
-        rm $PREFIX/$arch-w64-mingw32/lib/libunwind.a
-    fi
-done

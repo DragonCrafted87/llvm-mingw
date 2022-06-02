@@ -72,6 +72,12 @@ else
         ;;
     esac
 fi
+if [ -n "$MACOS_REDIST" ]; then
+    if [ -z "$CFLAGS" ]; then
+        export CFLAGS="-g -O2"
+    fi
+    export CFLAGS="$CFLAGS -arch arm64 -arch x86_64 -mmacosx-version-min=10.9"
+fi
 if [ -n "$SKIP_INCLUDE_TRIPLET_PREFIX" ]; then
     INCLUDEDIR="$PREFIX/include"
 else
@@ -86,6 +92,8 @@ cd build${CROSS_NAME}
 ../configure --prefix="$PREFIX" $CONFIGFLAGS
 $MAKE -j$CORES
 $MAKE install-strip
+mkdir -p "$PREFIX/share/gendef"
+install -m644 ../COPYING "$PREFIX/share/gendef"
 cd ../../widl
 [ -z "$CLEAN" ] || rm -rf build${CROSS_NAME}
 mkdir -p build${CROSS_NAME}
@@ -93,6 +101,8 @@ cd build${CROSS_NAME}
 ../configure --prefix="$PREFIX" --target=$ANY_ARCH-w64-mingw32 --with-widl-includedir="$INCLUDEDIR" $CONFIGFLAGS
 $MAKE -j$CORES
 $MAKE install-strip
+mkdir -p "$PREFIX/share/widl"
+install -m644 ../../../COPYING "$PREFIX/share/widl"
 cd ..
 cd "$PREFIX/bin"
 # The build above produced $ANY_ARCH-w64-mingw32-widl, add symlinks to it
