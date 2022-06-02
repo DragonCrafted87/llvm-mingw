@@ -92,7 +92,7 @@ if [ ! -d llvm-project ]; then
         clone \
             --depth 1 \
             https://github.com/llvm/llvm-project.git \
-                --branch "$LLVM_VERSION"
+                --branch release/"$LLVM_VERSION".x
     CHECKOUT=1
 fi
 
@@ -105,7 +105,7 @@ if [ -n "$SYNC" ]; then
     # argument.)
     if git cat-file -e "$LLVM_VERSION" 2> /dev/null; then
         # Exists; just check it out
-        git checkout "$LLVM_VERSION"
+        git checkout release/"$LLVM_VERSION".x
     else
         case "$LLVM_VERSION" in
         llvmorg-*)
@@ -113,11 +113,11 @@ if [ -n "$SYNC" ]; then
             # "tag" keyword. This makes sure that the local repo
             # gets the tag too, not only the commit itself. This allows
             # later fetches to realize that the tag already exists locally.
-            git fetch --depth 1 origin tag "$LLVM_VERSION"
-            git checkout "$LLVM_VERSION"
+            git fetch --depth 1 origin tag release/"$LLVM_VERSION".x
+            git checkout release/"$LLVM_VERSION".x
             ;;
         *)
-            git fetch --depth 1 origin "$LLVM_VERSION"
+            git fetch --depth 1 origin release/"$LLVM_VERSION".x
             git checkout FETCH_HEAD
             ;;
         esac
